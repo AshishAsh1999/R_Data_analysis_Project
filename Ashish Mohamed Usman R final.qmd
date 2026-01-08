@@ -1,0 +1,994 @@
+---
+title: "STAT30340/STAT40730 Data Programming with R - Final Project"
+author: "Ashish Mohamed Usman - 24201306"
+format:
+  pdf:
+    fig-width: 13
+    fig-height: 10
+fontsize: 11pt
+editor: visual
+---
+
+## Part 1: Analysis:
+
+#### **1. Importing the Dataset**
+
+Using `read_csv()` from `readr` to import the dataset since it's in CSV format.
+
+I loaded the required library, imported the dataset from a CSV file, and checked its structure to understand the variables and their types.
+
+```{r, warning=FALSE, message=FALSE}
+# Loading the required library for importing CSV data
+library(readr)
+
+# Importing the dataset from the CSV file
+# The dataset is sourced from https://data.cso.ie/table/ITM05
+data <- read_csv("ITM05.20241205T161230.csv")
+
+# Displaying the structure of the dataset to understand its variables
+str(data, width = 84, strict.width = "cut")
+
+```
+
+### **2. Data Cleaning**
+
+Handling missing values, renaming columns, and ensuring the data is in a tidy format.
+
+I loaded the required libraries for data manipulation, removed rows with missing values, and converted relevant columns (`Month` and `Main Accommodation Type`) into categorical variables. I then verified the changes by checking the structure of the cleaned dataset.
+
+```{r, warning=FALSE, message=FALSE}
+# Loading libraries for data manipulation
+library(dplyr)
+library(tidyr)
+
+# Cleaning and preparing the dataset
+data <- data |>
+  drop_na() |>  # Removing rows with missing values
+  mutate(
+    # Converting "Month" column to a categorical (factor) variable
+    Month = as.factor(Month),
+    # Converting "Main Accommodation Type" to a categorical (factor) variable
+    `Main Accommodation Type` = as.factor(`Main Accommodation Type`)
+  )
+
+# Displaying the structure of the cleaned dataset to verify changes
+str(data, width = 84, strict.width = "cut")
+
+```
+
+### **3. Sorting Data by Month**
+
+I recoded the `Month` variable to shorter, standardized month-year formats (e.g., `23-Jan`, `24-Feb`) for simplicity and readability. The dataset was then sorted by the `Month` column to ensure chronological order.
+
+```{r}
+# Ensuring Month is an ordered factor with renamed shorter labels and sorting
+data <- data |>
+  mutate(
+    Month = recode_factor(Month,
+      "2023 January" = "23-Jan", 
+      "2023 February" = "23-Feb", 
+      "2023 March" = "23-Mar",
+      "2023 April" = "23-Apr",
+      "2023 May" = "23-May", 
+      "2023 June" = "23-Jun",
+      "2023 July" = "23-Jul", 
+      "2023 August" = "23-Aug", 
+      "2023 September" = "23-Sep",
+      "2023 October" = "23-Oct", 
+      "2023 November" = "23-Nov", 
+      "2023 December" = "23-Dec",
+      "2024 January" = "24-Jan", 
+      "2024 February" = "24-Feb", 
+      "2024 March" = "24-Mar",
+      "2024 April" = "24-Apr", 
+      "2024 May" = "24-May", 
+      "2024 June" = "24-Jun",
+      "2024 July" = "24-Jul", 
+      "2024 August" = "24-Aug", 
+      "2024 September" = "24-Sep",
+      "2024 October" = "24-Oct", 
+      "2024 November" = "24-Nov", 
+      "2024 December" = "24-Dec"
+    )
+  ) |>
+  arrange(Month)  # Sorting the dataset by the renamed Month column
+
+```
+
+### **4. Numerical Summaries**
+
+I generated basic statistical summaries (e.g., mean, median, minimum, maximum) for selected numerical columns in the dataset to understand the distribution and range of key variables.
+
+```{r}
+# Generating basic summaries for numerical columns
+summary(data[c("Number of Overnight Trips by Foreign Visitors (Thousand)", 
+               "Percentage of Overnight Trips by Foreign Visitors (%)",
+               "Average Length of Stay of Foreign Visitors (Nights per trip)",
+               "Number of Nights by Foreign Visitors (Thousand)",
+               "Percentage of Nights by Foreign Visitors (%)"
+               )])
+
+```
+
+### **Numerical Summary**
+
+The dataset provides a statistical overview of foreign visitors' trips, percentages, nights stayed, and average length of stay. Key findings are summarized below:
+
+1.  **Number of Overnight Trips by Foreign Visitors (Thousand)**\
+    The number of trips ranges from 7.10 to 763.60 thousand, with a median of 95.90 thousand. Most trips are concentrated below the mean of 182.58 thousand, reflecting a right-skewed distribution dominated by a few categories or months with exceptionally high totals.
+
+2.  **Percentage of Overnight Trips by Foreign Visitors (%)**\
+    The percentage of trips varies from 2.10% to 100%, with a median of 20.55%. The mean of 33.33% highlights that some categories contribute disproportionately to the total, with complete dominance observed in certain segments.
+
+3.  **Average Length of Stay of Foreign Visitors (Nights per Trip)**\
+    The average length of stay ranges from 3.30 to 56.00 nights, with a median of 8.15 nights. Most trips are relatively short, but the mean of 9.95 nights is influenced by outliers, including a small number of extended stays.
+
+4.  **Number of Nights by Foreign Visitors (Thousand)**\
+    The total number of nights spent by visitors ranges from 45.3 to 7337.7 thousand, with a median of 811.2 thousand. The mean of 1422.4 thousand indicates significant variation, driven by a few categories with very high totals.
+
+5.  **Percentage of Nights by Foreign Visitors (%)**\
+    The percentage of nights ranges from 1.50% to 100%, with a median of 19.65% and a mean of 33.33%. This pattern mirrors the percentage of trips, showing concentrated dominance in a few categories.
+
+### **Key Insights**
+
+-   **Trips and Nights**: The right-skewed distributions for trips and nights highlight that most observations fall below their respective means, with a small number of categories or time periods contributing disproportionately high totals.
+
+-   **Percentage Distributions**: Both trip and night percentages reflect concentration in specific segments, with some categories dominating entirely, as evidenced by the 100% maximum values.
+
+-   **Length of Stay**: Most trips are short, typically around 8 nights, but a few extended stays significantly inflate the mean.
+
+### **5. Visualization**
+
+Creating graphical summaries to visualize trends and distributions in the dataset.
+
+#### (a) **Histogram of Number of Overnight Trips**
+
+I created a histogram using `ggplot2` to visualize the distribution of the Number of Overnight Trips by Foreign Visitors (Thousand). The plot includes customized bin widths and aesthetics, such as axis labels, title, and text size, to enhance readability and presentation.
+
+```{r, warning=FALSE, message=FALSE}
+# Loading ggplot2 for creating visualizations
+library(ggplot2)
+
+# Creating a histogram to show the distribution of overnight trips
+ggplot(data, 
+       aes(x = `Number of Overnight Trips by Foreign Visitors (Thousand)`)) +
+# Using specified bin width and colors
+  geom_histogram(binwidth = 10, fill = "blue", color = "black") + 
+  labs(
+    title = "Distribution of Overnight Trips",  # Adding a title to the plot
+    x = "Trips (Thousands)",  # Adding a label for the x-axis
+    y = "Count" , # Adding a label for the y-axis
+    size = 4
+  )+
+  theme(
+    # X-axis label size
+    axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
+    axis.text.y = element_text(size = 20), # Y-axis label size
+    axis.title.x = element_text(size = 20), # X-axis title size
+    axis.title.y = element_text(size = 20), # Y-axis title size
+    
+    plot.title = element_text(size = 20, hjust = 0.5) 
+  )
+
+```
+
+### **Analysis of the Histogram**
+
+The histogram illustrates the distribution of the Number of Overnight Trips by Foreign Visitors (in Thousands). Below are the key insights:
+
+### **1. Skewed Distribution**
+
+-   The data exhibits a right-skewed distribution, with the majority of observations concentrated on the lower end of the x-axis (below 200 thousand trips).
+
+-   This indicates that most months or categories report fewer overnight trips, with only a few instances reaching significantly higher values.
+
+### **2. High Frequency of Low Values**
+
+-   A large proportion of observations falls between 0 and 100 thousand trips, as evident from the tall bars in the first few bins.
+
+-   Over 20 instances occur in the first bin (likely between 0–20 thousand trips), suggesting that small trip volumes are common.
+
+### **3. Presence of Outliers**
+
+-   A few bins toward the right-hand side (beyond 400 thousand trips) indicate outliers or months with exceptionally high trip volumes.
+
+-   These outliers skew the mean upward, making it higher than the median.
+
+### **4. Variability in Mid-Range Values**
+
+-   Between 200 and 400 thousand trips, the frequencies vary, with some bins showing relatively higher counts and others having sparse occurrences.
+
+-   This variability suggests inconsistencies in mid-range trip volumes across the dataset.
+
+### **5. General Trend**
+
+-   The data shows a significant imbalance between months or categories, with most recording smaller trip volumes compared to a few high-performing ones.
+
+-   This trend is typical in cases where specific months (e.g., peak travel seasons) or high-demand destinations dominate the total trips.
+
+### **Key Insights**
+
+1.  **Seasonal Patterns**: The high-frequency bins on the left likely represent off-peak periods, while the outliers may correspond to peak travel seasons or special events.
+
+2.  **Concentration of Trips**: A small number of months or destinations contribute disproportionately to the total trip volume.
+
+3.  **Resource Allocation**: These insights could guide tourism stakeholders in planning for peak and off-peak periods by optimizing resource allocation and marketing strategies.
+
+#### (b) **Boxplot of Average Length of Stay by Accommodation Type**
+
+I created a boxplot using `ggplot2` to analyze the Average Length of Stay of Foreign Visitors (Nights per trip) across different Main Accommodation Types. The plot includes customized colors, axis labels, and text sizes for better visualization and interpretation of data.
+
+```{r}
+# Creating a boxplot to compare average length of stay by accommodation type
+ggplot(data, aes(x = `Main Accommodation Type`, 
+y = `Average Length of Stay of Foreign Visitors (Nights per trip)`
+                 ))+
+  geom_boxplot(fill = "green") +  # Using green color for the boxplot
+  labs(
+    title = "Length of Stay by Accommodation Type",  # Adding a title
+    x = "Accommodation Type",  # Adding a label for the x-axis
+    y = "Length of Stay (Nights)"  # Adding a label for the y-axis
+    )+
+  theme(
+    # X-axis label size
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 16),  # Y-axis label size
+    axis.title.x = element_text(size = 20), # X-axis title size
+    axis.title.y = element_text(size = 20), # Y-axis title size
+    # Plot title size (centered)
+    plot.title = element_text(size = 20, hjust = 0.5) 
+  )
+
+```
+
+### **Analysis of the box plot:**
+
+### **1. All Types of Accommodation**
+
+-   This category aggregates all accommodation types and gives an overall view of the length of stay.
+
+-   The median length of stay is approximately 9 nights, with a small interquartile range (IQR), suggesting that most stays cluster around this value.
+
+-   No outliers are observed, indicating consistent patterns across all accommodation types.
+
+### **2. Friends/Relatives/Own Property**
+
+-   The median length of stay is slightly below 10 nights, indicating shorter stays compared to other categories such as self-catering.
+
+-   The IQR is narrow, with most stays ranging between 7 and 10 nights, showing little variability.
+
+-   There are no outliers, highlighting consistent lengths of stay for this category.
+
+### **3. Guest House/Bed & Breakfast**
+
+-   The median stay is approximately 8 nights, making it one of the shorter stay categories.
+
+-   The IQR is small, with most stays concentrated between 6 and 10 nights, reflecting consistent short-term stays.
+
+-   There are no visible outliers, indicating that guest houses are used primarily for brief visits.
+
+### **4. Hotel/Conference Centre**
+
+-   This category has the shortest median stay, approximately 6 nights, confirming its primary use for business travel or short leisure stays.
+
+-   The IQR is very tight, with stays typically ranging from 5 to 8 nights, showing little variability.
+
+-   No significant outliers are present, further emphasizing the short-term nature of stays in this type of accommodation.
+
+### **5. Other Private Tourism Accommodation**
+
+-   This category exhibits the longest stays among all accommodation types.
+
+-   The median length of stay is more than 15 nights, indicating that it caters to visitors staying for extended periods.
+
+-   The IQR is the widest, with stays ranging from 10 to 25 nights, reflecting substantial variability.
+
+-   Several outliers are visible, with a few stays exceeding 55 nights, making this category stand out for its long-term appeal.
+
+### **6. Self-Catering/Rented House**
+
+-   This category has the second-longest stays after "Other Private Tourism Accommodation."
+
+-   The median length of stay is slightly above 10 nights, making it a popular option for moderately long visits.
+
+-   The IQR is wide, with stays ranging from 8 to 18 nights, showing significant variability.
+
+-   A few outliers are present, with some stays reaching 25 nights, indicating that self-catering houses cater to both short- and extended-stay visitors.
+
+### **Key Observations:**
+
+1.  **Median Length of Stay**:
+
+    -   The shortest stays are in Hotels/Conference Centres (median of 6 nights).
+
+    -   The longest stays are in Other Private Tourism Accommodation (median of over 15 nights).
+
+2.  **Variability (IQR)**:
+
+    -   The most consistent lengths of stay are in Hotels and Guest Houses, which have narrow IQRs.
+
+    -   The widest variability is observed in Other Private Tourism Accommodation, followed by Self-Catering/Rented Houses.
+
+3.  **Outliers**:
+
+    -   Long-term stays are most pronounced in Other Private Tourism Accommodation, with stays exceeding 55 nights.
+
+    -   Self-Catering/Rented Houses also show some extended stays, with outliers reaching 25 nights.
+
+### **6. Trend Analysis**
+
+In this step, I aggregated the data by Month to calculate the total number of overnight trips made by foreign visitors each month. This summarized data was then used to create a line plot that visualizes the monthly trends in overnight trips over time. The plot employs a clear design with customized labels, axis text sizes, and colors to enhance its readability and presentation. The visualization helps to identify patterns, such as seasonal variations or long-term trends in the number of trips.
+
+```{r}
+# Aggregating data to calculate total trips for each month
+monthly_trends <- data |>
+  group_by(Month) |>  # Grouping data by the "Month" column
+  summarise(
+    # Calculating total trips for each month
+Total_Trips = sum(`Number of Overnight Trips by Foreign Visitors (Thousand)`)  
+    )
+
+# Creating a line plot to display trends in overnight trips over time
+ggplot(monthly_trends, aes(x = Month, y = Total_Trips, group = 1)) +
+  geom_line(color = "blue") +  # Creating a line plot with blue lines
+  labs(
+    title = "Monthly Trends in Overnight Trips",  # Adding a title
+    x = "Month",  # Adding a label for the x-axis
+    y = "Total Trips (Thousands)"  # Adding a label for the y-axis
+  )+
+  theme(
+    # X-axis label size
+    axis.text.x = element_text(size = 20, angle = 45, hjust = 1), 
+    axis.text.y = element_text(size = 20),  # Y-axis label size
+    axis.title.x = element_text(size = 20), # X-axis title size
+    axis.title.y = element_text(size = 20), # Y-axis title size
+    # Plot title size (centered)
+    plot.title = element_text(size = 20, hjust = 0.5)
+  )
+
+```
+
+### **Key Observations**
+
+#### **2023 Trends**
+
+-   January 2023: The year begins with approximately 800 thousand trips.
+
+-   February 2023: A significant dip occurs, with trips falling below 700 thousand, marking the lowest point of the year.
+
+-   March to August 2023: Trips steadily rise, peaking at around 1450 thousand in August, reflecting the summer travel season.
+
+-   September to November 2023: A sharp decline follows the summer peak, with trips dropping to around 900 thousand in November.
+
+-   December 2023: A slight decrease occurs, with trips stabilizing at approximately 850 thousand.
+
+#### **2024 Trends**
+
+-   The 2024 pattern mirrors the 2023 pattern almost identically, following similar seasonal fluctuations:
+
+    -   January 2024: Travel volumes slightly increase from December 2023, reaching just over 900 thousand trips.
+
+    -   February 2024: Trips decline again, mirroring February 2023, falling below 900 thousand trips.
+
+    -   March to August 2024: A steady increase occurs, peaking at over 1500 thousand trips in August, slightly higher than the 2023 peak.
+
+    -   September to October 2024: A decline follows the summer peak, with trips dropping to around 1100 thousand by October. Data is not available for November or December.
+
+### Peaks and Troughs
+
+1.  Peaks:
+
+    -   The highest travel volumes occur in August of both years, with 1450 thousand trips in 2023 and over 1500 thousand trips in 2024.
+
+2.  Troughs:
+
+    -   The lowest travel volumes are seen in February of both years, with trips falling below 700 thousand in 2023 and below 900 thousand in 2024.
+
+### **Seasonal Patterns**
+
+-   The trends in 2023 and 2024 are highly consistent, confirming a strong seasonal pattern:
+
+    -   Winter (January-February): The lowest travel volumes are observed, with February being the quietest month for both years.
+
+    -   Spring to Summer (March-August): Travel demand steadily grows, peaking in August during the summer.
+
+    -   Autumn (September-October): A decline follows the summer peak, with trips falling to around 1100 thousand in October 2024. Data beyond October 2024 is unavailable.
+
+### **Key Insights and Implications**
+
+1.  **Seasonal Travel Trends**:
+
+    -   Strong seasonality is evident, with peaks in August and troughs in February for both years.
+
+    -   Predictable patterns allow for effective resource planning and marketing strategies.
+
+2.  **Tourism Planning**:
+
+    -   Summer months (particularly August) require capacity planning to handle peak travel demand.
+
+    -   Promotions and targeted campaigns could help boost travel during the winter months, especially February.
+
+3.  **Growing Travel Demand**:
+
+    -   The increase in trips in August 2024 compared to August 2023 indicates a positive trend in travel demand, suggesting opportunities for expansion during peak seasons.
+
+4.  **Autumn Decline**:
+
+    -   While trips decline after the summer peak, the drop in October 2024 is to 1100 thousand, slightly higher than the corresponding drop in 2023, which went as low as 900 thousand in November. This highlights a potential improvement in travel during autumn months.
+
+### **Conclusions**
+
+Based on the analysis, the following conclusions can be drawn:
+
+1.  **Seasonal Travel Trends**:
+
+    -   A clear seasonal pattern emerges, with the highest travel volumes during summer (peaking in August) and the lowest in winter (with February as the slowest month).
+
+2.  **Accommodation-Specific Trends**:
+
+    -   Longer stays are observed in "Self-Catering/Rented Houses" and "Other Private Tourism Accommodation," which also show greater variability and outliers.
+
+    -   Short-term stays are more common in "Hotels/Conference Centres" and "Guest Houses," reflecting their role in business or short leisure trips.
+
+3.  **Trip Distribution**:
+
+    -   The data is skewed towards smaller trip volumes, with a few categories or months contributing disproportionately to total trips.
+
+4.  **Implications for Stakeholders**:
+
+    -   **Tourism Authorities**: Can focus on promoting off-peak travel periods (e.g., February and November) to balance seasonal demand.
+
+    -   **Accommodation Providers**: Should optimize resources for peak summer months and tailor offerings for extended-stay travelers in self-catering or private accommodations.
+
+    -   **Infrastructure Planning**: Resources need to be allocated effectively for the high-demand summer months, particularly in August.
+
+5.  **Predictability**:
+
+    -   The similar trends in 2023 and 2024 make future travel patterns predictable, enabling stakeholders to better plan infrastructure, marketing, and services.
+
+## Part 2: R Package:
+
+I imported a second dataset (**Residential Property Price Index**) from the CSV file, sourced from the **CSO's HPM06 table**, and cleaned the data by:
+
+1.  **Removing missing values** to ensure data consistency.
+
+2.  **Converting columns** such as `Month` and `Type of Residential Property` into categorical (factor) variables for easier analysis and visualization.
+
+3.  **Simplifying property type names** using `recode_factor` for clarity and improved readability in subsequent visualizations and summaries.
+
+```{r, warning=FALSE, message=FALSE}
+# Importing the dataset from the CSV file
+# The dataset is sourced from https://data.cso.ie/table/HPM06
+data2 <- read_csv("HPM06.20241214T201201.csv")
+
+# Cleaning and preparing the dataset
+data2 <- data2 |>
+  drop_na() |>  # Removing rows with missing values
+  mutate(
+# Converting "Month" column to a categorical (factor) variable
+    Month = as.factor(Month),
+# Converting "Type of Residential Property" to a categorical (factor) variable
+    `Type of Residential Property` = as.factor(`Type of Residential Property`)
+  )
+# Simplify property type names using recode_factor
+data2 <- data2 |>
+  mutate(`Type of Residential Property` = recode_factor(
+    `Type of Residential Property`,
+    "National - all residential properties" = "National-All",
+    "National - houses" = "National-Houses",
+    "National - apartments" = "National-Apts",
+    "Dublin - all residential properties" = "Dublin-All",
+    "Dublin - houses" = "Dublin-Houses",
+    "Dublin - apartments" = "Dublin-Apts"
+  ))
+
+
+```
+
+## Package Selected: gghalves
+
+The gghalves package, developed by **Claus Wilke**, introduces "half-geoms" for creating compact and visually informative plots, including half-boxplots, half-violin plots, and half-point plots. These visualizations are especially effective for comparing distributions across groups while simultaneously displaying raw data points, offering both statistical summaries and detailed insights.
+
+This report demonstrates three key functionalities of the gghalves package applied to a residential property price index dataset:
+
+1.  **Half-point plots** to visualize raw percentage changes in property indices while highlighting clusters and outliers for different property types.
+
+2.  **Half-boxplots** to compare property price indices across property types using statistical summaries.
+
+3.  **Half-violin plots** to visualize the distribution and density of price changes over time, revealing trends and variability.
+
+The dataset focuses on residential property price indices, including percentage changes over 1 month, 3 months, and 12 months, as well as property type categories. These visualizations effectively capture both the detailed data and overarching patterns, enabling clear and concise data exploration.
+
+### **Visualizing 3-Month Percentage Changes**
+
+I used the `gghalves` library to create a half-point plot that visualizes the 3-month percentage changes in residential property price indices by property type. The points are plotted on the left side of each category for clarity, with transparency and color adjustments to improve visual appeal. The plot employs minimal styling and angled axis labels for better readability of property types. This visualization highlights the distribution of percentage changes for each property type.
+
+```{r, warning=FALSE, message=FALSE}
+library(gghalves)
+# Creating a half-point plot for 3-month percentage change
+ggplot(data2, aes(
+  x = `Type of Residential Property`,
+y = `Percentage Change over 3 months for Residential Property Price Index (%)`
+,
+  color = `Type of Residential Property`
+)) +
+  #Left-side points
+  geom_half_point(side = "l", alpha = 0.6, shape = 16, size = 2)+ 
+  labs(
+    title = "Half-Point Plot of 3-Month Percentage Changes by Property Type",
+    x = "Property Type",
+    y = "3-Month Percentage Change (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+    axis.title.x = element_text(size = 14),
+    axis.title.y = element_text(size = 14),
+    plot.title = element_text(size = 16, hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+### **Geom Half Point Usage in the Plot**
+
+#### **Purpose of `geom_half_point()`**
+
+1.  **Visualizing Individual Data Points**:
+
+    -   Each point represents a 3-month percentage change for specific property types, such as South-East excluding South Tipperary - houses.
+
+    -   It provides a granular view of the data, ensuring transparency in the distribution.
+
+2.  **Organized Alignment**:
+
+    -   Points are plotted on one side of the axis to prevent clutter and make the visualization more readable.
+
+3.  **Revealing Patterns and Outliers**:
+
+    -   It helps uncover trends, clusters, and outliers for each property type, facilitating easy comparisons.
+
+### **Plot Insights**
+
+#### **Clusters and Spread**:
+
+-   Property types like National-All and Dublin-All display dense clusters between 0% and 3%, indicating consistent price changes.
+
+-   Wider spreads, as seen in South-East excluding South Tipperary - houses, suggest greater variability in mid-term changes.
+
+#### **Outliers**:
+
+-   Positive outliers (above 5%) signify sharp increases in prices for some property types.
+
+-   Negative outliers (below -5%) point to notable declines in specific cases.
+
+#### **Category Observations**:
+
+-   National-Houses exhibit steady and moderate trends.
+
+-   South-East excluding South Tipperary - houses demonstrates a wider spread, reflecting more variability in changes.
+
+### **Key Takeaways**
+
+-   The use of `geom_half_point()` enables clear visualization of individual 3-month percentage changes.
+
+-   The plot effectively highlights variability, outliers, and trends across different property types, aiding deeper data analysis.
+
+### **2. Comparing Property Price Index with Half Boxplots**
+
+I generated a half-boxplot combined with half-point plots to visualize the Residential Property Price Index (Base Jan 2005 = 100) for various property types. The boxplots on the right provide a summary of the data distribution, while the raw data points on the left add detail about individual observations. Custom features, such as transparency, distinct outlier coloring, and angled axis labels, enhance the plot’s clarity and readability. This visualization effectively highlights differences in price indices across property types by displaying both summary statistics and individual data points.
+
+```{r}
+# Creating half-boxplots
+ggplot(data2, aes(
+  x = `Type of Residential Property`,
+  y = `Residential Property Price Index (Base Jan 2005 = 100)`,
+  fill = `Type of Residential Property`
+)) +
+  # Right-side boxplot
+  geom_half_boxplot(side = "r", alpha = 0.6, outlier.color = "red")+
+  # Left-side raw points
+  geom_half_point(side = "l", alpha = 0.4, color = "blue") +
+  labs(
+    title = "Comparison of Property Price Index by Type",   # Plot title
+    x = "Residential Property Type",  # X-axis title
+    y = "Price Index (Base Jan 2005 = 100)" # Y-axis title
+  ) +
+  theme_minimal() +
+  theme(
+    # X-axis label size
+    axis.text.x = element_text(size = 14, angle = 45, hjust = 1), 
+    axis.text.y = element_text(size = 14),# Y-axis label size
+    axis.title.x = element_text(size = 16), # X-axis title size
+    axis.title.y = element_text(size = 16), # Y-axis title size
+    # Plot title size (centered)
+    plot.title = element_text(size = 18, hjust = 0.5) 
+  )
+
+
+```
+
+### **Plot Summary: Half-Boxplot and Raw Points**
+
+This visualization uses a combination of half-boxplots and raw data points to compare the Residential Property Price Index (Base Jan 2005 = 100) across different property types. This approach provides a dual perspective, showcasing both overall statistical summaries and individual data details.
+
+### **Purpose of the Half-Boxplot**
+
+**Summarizing Data Distribution**\
+Half-boxplots offer a succinct overview of the price index distribution for each property type, focusing on key statistical measures:
+
+-   Median (central line): Represents the typical price index for a property type.
+
+-   Interquartile Range (IQR) (box): Highlights the spread of the middle 50% of values.
+
+-   Whiskers: Capture the overall range of the data, excluding any outliers.
+
+**Highlighting Outliers**\
+Outliers, shown as red points beyond the whiskers, indicate unusually high or low price indices. For instance, categories such as Dublin-Apartments feature noticeable outliers.
+
+### **Purpose of Raw Points**
+
+**Visualizing Individual Data**\
+Raw data points, added with `geom_half_point()`, complement the half-boxplot by illustrating the full range of values within each property type. This layer adds detail often absent in traditional boxplots.
+
+**Revealing Clusters and Variability**
+
+-   Dense clusters, such as those seen in National-All, indicate consistent property price indices.
+
+-   Scattered points, such as those in South-East excluding South Tipperary - houses, highlight greater variability in price indices.
+
+### **Insights**
+
+**Consistency Across Property Types**
+
+-   Categories like National-All and Dublin-Houses show compact boxplots with few outliers, suggesting stable price indices.
+
+-   Conversely, South-East excluding South Tipperary - houses displays a broader spread, indicating higher variability in property prices.
+
+**Outliers and Trends**
+
+-   Outliers in categories like Dublin-Apartments point to specific cases of unusually high or low price indices.
+
+-   Median differences between property types are evident, with Dublin-All having notably higher typical price indices compared to categories like Midland - houses.
+
+### **Key Takeaways**
+
+The combination of half-boxplots and raw data points strikes a balance between statistical summaries and detailed granularity. This approach highlights trends, outliers, and variability, offering a comprehensive view of residential property price dynamics across different property types.
+
+### **3. Visualizing Price Change Distribution with Half-Violin Plots**
+
+I created a half-violin plot combined with half-point plots to visualize 12-month percentage changes in residential property price indices across property types. The right-side violin plot highlights the distribution and density of changes, while the left-side points reveal individual data values. Enhancements like transparency, distinct colors, and angled axis labels enhance clarity and accessibility. This design offers a clear and comprehensive view of both overall trends and variability within each property type.
+
+```{r}
+#creating half violin plot
+ggplot(data2, aes(
+  x = `Type of Residential Property`,
+y = `Percentage Change over 12 months for Residential Property Price Index (%)`
+  ,
+  fill = `Type of Residential Property`
+)) +
+  geom_half_violin(side = "r", alpha = 0.6) +  # Right-side violin
+  # Left-side raw points
+  geom_half_point(side = "l", alpha = 0.4, color = "darkred") +  
+  labs(
+    title = "12-Month Percentage Changes by Property Type", # Plot title
+    x = "Residential Property Type",  # X-axis title
+    y = "12-Month Percentage Change (%)"# Y-axis title
+  ) +
+  theme_minimal() +
+  theme(
+    # X-axis label size
+    axis.text.x = element_text(size = 14, angle = 45, hjust = 1), 
+    axis.text.y = element_text(size = 14),# Y-axis label size
+    axis.title.x = element_text(size = 16), # X-axis title size
+    axis.title.y = element_text(size = 16), # Y-axis title size
+    # Plot title size (centered)
+    plot.title = element_text(size = 18, hjust = 0.5) 
+  )
+
+```
+
+### **Interpretation of the Plot with Half-Violin**
+
+### **Purpose of geom_half_violin()**
+
+**Visualizing Data Distribution**\
+The half-violin plot (on the right) illustrates the density distribution of 12-month percentage changes across property types:
+
+-   Wider sections indicate higher concentrations of data points, while narrower sections highlight sparse areas.
+
+**Complementing Raw Data**\
+Raw data points (on the left) add transparency by showing individual percentage changes, enriching the density summary with granular detail.
+
+**Enabling Comparisons**\
+The combination of violins and raw data facilitates comparisons of spread, clustering, and variability among property types.
+
+### **Insights from the Plot**
+
+1.  **High Variability**
+
+-   Dublin-Apartments:\
+    Wide distribution from -20% to +20%, with most changes between 0% and +5%. Tails reveal extreme price changes.
+
+-   Mid-West including South Tipperary - houses:\
+    Broad spread, with concentration between -15% and +10%. The long negative tail indicates occasional steep declines.
+
+2.  **Moderate Variability**
+
+-   Mid-East including Louth - houses:\
+    Narrower distribution around 0%, suggesting stable price changes, with occasional extreme values beyond -10% and +10%.
+
+-   West - houses:\
+    Most changes fall between -5% and +5%, with a slight bias toward positive price changes.
+
+3.  **Key Comparisons**
+
+-   Dublin-Houses vs. Border excluding Louth - houses:\
+    Dublin-Houses exhibit wider variability, while Border excluding Louth - houses shows a more compact and stable distribution.
+
+### **Key Takeaways**
+
+-   **High Variability:** Categories like Dublin-Apartments and Mid-West including South Tipperary - houses show wide distributions, indicating significant fluctuations.
+
+-   **Moderate Variability:** Mid-East including Louth - houses and West - houses reflect more stability with narrower spreads.
+
+-   **Advantage of geom_half_violin():** Efficiently visualizes density, while raw data points highlight trends, outliers, and nuances in percentage changes.
+
+This approach effectively captures both stability and variability in property price changes, offering a detailed and comprehensive view.
+
+## **Summary of the Purpose of the R Package: `gghalves`**
+
+The R package `gghalves` is designed to improve data visualization by enabling the use of half-geometries that combine raw data points with summary statistics in a single plot. Its main purposes include:
+
+1.  **Comprehensive Data Representation**: Facilitates side-by-side visualization of raw observations and summaries to provide a detailed understanding of data distributions.
+
+2.  **Enhanced Clarity**: Reduces visual clutter by separating raw data and summary plots onto different sides of the axis.
+
+3.  **Versatile Plot Options**: Offers support for various geometries, including half-boxplots, half-violin plots, and half-point plots, making it adaptable to different datasets and use cases.
+
+4.  **Aesthetic Customization**: Allows for clean and professional visualizations, ensuring effective communication of trends and variability in data.
+
+In summary, the R package `gghalves` is a valuable tool for creating clear, concise, and visually appealing plots, suited for exploratory and presentation purposes.
+
+## Part 3: Functions/Programming
+
+I developed a statistical analysis function using S3 classes to perform linear regression on Avg_Length_Stay (dependent variable) with predictors such as Num_Trips, Pct_Trips, and Pct_Nights. The function includes:
+
+-   **Model Fitting:** Constructs a linear regression model.
+
+-   **Custom Methods:**
+
+    -   **Printing:** Outputs a concise summary of the model with key coefficients.
+
+    -   **Summarizing:** Provides detailed diagnostics, including R-Squared.
+
+    -   **Plotting:** Generates an Actual vs. Fitted plot to assess model accuracy.
+
+This modular approach ensures streamlined analysis and clear visualization of regression outcomes.
+
+```{r}
+# Rename columns using the `names()` function
+names(data)[names(data) == 
+"Number of Overnight Trips by Foreign Visitors (Thousand)"] <-"Num_Trips"
+names(data)[names(data) == 
+"Percentage of Overnight Trips by Foreign Visitors (%)"] <-"Pct_Trips"
+names(data)[names(data) == 
+"Percentage of Nights by Foreign Visitors (%)"] <- "Pct_Nights"
+names(data)[names(data) == 
+"Average Length of Stay of Foreign Visitors (Nights per trip)"] <-
+  "Avg_Length_Stay"
+
+# Statistical Analysis Function using S3 Classes
+accommodation_analysis <- function(data) {
+  
+  # Perform simple linear regression using the specified model
+  fit <- lm(Avg_Length_Stay ~ Num_Trips + Pct_Trips + Pct_Nights, data = data)
+  
+  # Create an S3 object to store results
+  result <- list(
+    coefficients = coef(fit),          # Regression coefficients
+    residuals = residuals(fit),        # Residuals from the regression
+    fitted_values = fitted(fit),       # Fitted values from the regression
+    formula = formula(fit),            # Formula used for regression
+    model = fit,                       # Original lm object
+    data = data                        # Input dataset
+  )
+  
+#Assign the class "accommodation_analysis" to the object 
+  #(S3 class implementation)
+  class(result) <- "accommodation_analysis"
+  return(result)
+}
+
+# Custom print method for "accommodation_analysis" class
+print.accommodation_analysis <- function(x, ...) {
+  # This is the custom print method for the S3 class "accommodation_analysis"
+  cat("Accommodation Analysis\n")
+  cat("Formula: ", deparse(x$formula), "\n\n")
+  cat("Coefficients:\n")
+  print(x$coefficients)
+}
+
+# Custom summary method for "accommodation_analysis" class
+summary.accommodation_analysis <- function(object, ...) {
+# This is the custom summary method for the S3 class "accommodation_analysis"
+  cat("Detailed Summary of Accommodation Analysis\n")
+  cat("Formula: ", deparse(object$formula), "\n\n")
+  cat("Model Coefficients:\n")
+  # Coefficient statistics from the regression model
+  print(summary(object$model)$coefficients)  
+  cat("\n Multiple R-squared:\n")
+  print(summary(object$model)$r.squared)  # Print R-squared value only
+}
+
+# Custom plot method for "accommodation_analysis" class
+plot.accommodation_analysis <- function(x, ...) {
+  # Ensure the data matches fitted values
+  data <- x$data  # data aligned with the model
+  
+  # Plot Actual vs Fitted Values
+  plot(data$Avg_Length_Stay, 
+       x$fitted_values, 
+       main = "Actual vs Fitted Values", 
+       xlab = "Actual Values", 
+       ylab = "Fitted Values", 
+       col = "blue", pch = 19)
+  abline(0, 1, col = "red", lwd = 2)  # Adding y=x reference line
+}
+
+# Example Usage with our Loaded Dataset
+example_accommodation_analysis <- function(data) {
+  # Applying the custom analysis function
+  result <- accommodation_analysis(data)
+  
+  # Using the custom print method for the S3 class
+  print(result)  # Calls print.accommodation_analysis
+  
+  # Using the custom summary method for the S3 class
+  summary(result)  # Calls summary.accommodation_analysis
+  
+  # Using the custom plot method for the S3 class
+  plot(result)  # Calls plot.accommodation_analysis
+}
+
+# Calling the example function with our loaded dataset
+example_accommodation_analysis(data)
+
+```
+
+### Formula
+
+The regression model is:
+
+Avg_Length_Stay=beta0 + beta1 x Num_Trips + beta2 x Pct_Trips + beta3 x Pct_Nights
+
+Where:
+
+-   Avg_Length_Stay: Dependent variable (response).
+
+-   Num_Trips, Pct_Trips, Pct_Nights: Independent variables (predictors).
+
+-   beta0: The intercept (constant term).
+
+-   beta1, beta2, beta3: Coefficients for the predictors, representing the change in `Avg_Length_Stay` for a 1-unit increase in the respective predictor while holding others constant.
+
+### Coefficients Table
+
+#### **Intercept (beta0)**
+
+-   **Value**: `11.09290`
+
+    -   When all predictors are 0, the average length of stay is approximately 11.09 nights.
+
+#### **Num_Trips (beta1)**
+
+-   **Estimate**: `8.582827e-05`
+
+    -   For every additional 1,000 trips by foreign visitors, the average length of stay increases by 0.086 nights.
+
+-   **t-value**: `0.012`
+
+    -   The small t-value suggests a weak relationship between `Num_Trips` and `Avg_Length_Stay`.
+
+-   **p-value**: `0.991`
+
+    -   The p-value (greater than 0.05) indicates that `Num_Trips` is not statistically significant.
+
+#### **Pct_Trips (beta2)**
+
+-   **Estimate**: `-0.5006893`
+
+    -   For every 1% increase in `Pct_Trips`, the average length of stay decreases by 0.5 nights.
+
+-   **t-value**: `-8.611`
+
+    -   The high absolute t-value suggests a strong relationship between `Pct_Trips` and `Avg_Length_Stay`.
+
+-   **p-value**: `2.28e-14`
+
+    -   The very low p-value (less than 0.05) indicates that `Pct_Trips` is statistically significant.
+
+#### **Pct_Nights (beta3)**
+
+-   **Estimate**: `0.4660102`
+
+    -   For every 1% increase in `Pct_Nights`, the average length of stay increases by 0.466 nights.
+
+-   **t-value**: `10.611`
+
+    -   The high absolute t-value suggests a strong relationship between `Pct_Nights` and `Avg_Length_Stay`.
+
+-   **p-value**: `2.92e-19`
+
+    -   The very low p-value (less than 0.05) indicates that `Pct_Nights` is statistically significant.
+
+### Key Insights
+
+#### **Significant Predictors**
+
+-   **Pct_Trips (beta2)**:
+
+    -   This variable has a strong negative relationship with `Avg_Length_Stay`.
+
+    -   For every 1% increase in `Pct_Trips`, the average length of stay decreases by approximately 0.5 nights.
+
+-   **Pct_Nights (beta3)**:
+
+    -   This variable has a strong positive relationship with `Avg_Length_Stay`.
+
+    -   For every 1% increase in `Pct_Nights`, the average length of stay increases by approximately 0.466 nights.
+
+#### **Non-Significant Predictor**
+
+-   **Num_Trips (beta1)**:
+
+    -   The variable is not statistically significant (p-value \> 0.05), meaning it does not meaningfully contribute to explaining the variation in `Avg_Length_Stay`.
+
+### Model Diagnostics
+
+1.  **Multiple R-squared (**R\^2): `0.527702`
+
+    -   Approximately 52.77% of the variability in `Avg_Length_Stay` is explained by the predictors.
+
+    -   This indicates a moderate fit for the model.
+
+### **Interpretation of the Actual vs. Fitted Values Plot**
+
+#### **Purpose of the Plot**
+
+The Actual vs. Fitted Values plot visualizes how well the regression model predicts the dependent variable. The goal is to assess the model's predictive accuracy and identify potential areas of poor performance or bias.
+
+#### **Key Observations from the Plot**
+
+1.  **Alignment with the Diagonal Line**:
+
+    -   The red diagonal line represents the ideal scenario where actual values equal the fitted (predicted) values (y=x).
+
+    -   Many points are scattered close to the diagonal, suggesting the model predicts reasonably well for these observations.
+
+2.  **Deviation from the Line**:
+
+    -   Several points deviate significantly from the diagonal line, especially for larger actual values.
+
+    -   This indicates the model underestimates the dependent variable (fitted values are much lower than actual values) for these observations.
+
+    -   The model struggles to accurately predict higher values of the dependent variable.
+
+3.  **Potential Outliers**:
+
+    -   A few points far away from the diagonal line could be outliers. These may represent extreme cases that the model does not fit well.
+
+4.  **Distribution of Points**:
+
+    -   Points are more densely clustered at lower actual values, indicating that the majority of observations have smaller dependent variable values.
+
+    -   The model's predictions for these lower values appear better aligned with the actual values.
+
+#### **Implications**
+
+1.  **Good Fit for Lower Values**:
+
+    -   The model performs reasonably well for observations with lower actual values, as these points are closer to the diagonal line.
+
+2.  **Poor Fit for Higher Values**:
+
+    -   The model underestimates higher actual values, suggesting it may not fully capture the variability in the dependent variable at larger scales.
